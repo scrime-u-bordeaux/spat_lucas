@@ -108,7 +108,6 @@ y_coords = [coord[2] for coord in result]
 # Réechantillonage
 import wave
 import contextlib
-import numpy as np
 fname = f"Audio/{track_name}.wav"
 with contextlib.closing(wave.open(fname,'r')) as f:
     frames = f.getnframes()
@@ -117,7 +116,7 @@ with contextlib.closing(wave.open(fname,'r')) as f:
 times = [float(value.split()[0]) for value in figures]
 
 # Ecriture des nouvelles coordonnées
-with open(f"Results/{instrument_name} - {track_name}.txt", 'w', encoding='utf-8') as f:
+with open(f"newSeq/{instrument_name} - {track_name}.txt", 'w', encoding='utf-8') as f:
     prev_time = 0.0
     f.write(f"0 0\n")
     for rel_time_coord in result:
@@ -137,14 +136,12 @@ with open(f"Results/{instrument_name} - {track_name}.txt", 'w', encoding='utf-8'
         f.write(f"{x_coords} {y_coords}\n")
 
 
-# # Génération de la heatmap
 
-# import numpy as np
-# from PIL import Image, ImageDraw
-# import matplotlib.pyplot as plt
+
+## ================== AFFICHAGE SPATIALISATION ================== ##
+
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.ndimage import gaussian_filter
 import re
 
 # Génération du graphique avec couleur dépendant du temps
@@ -154,16 +151,12 @@ times_norm = [coord[0] for coord in result]
 x_coords = [coord[1] for coord in result]
 y_coords = [coord[2] for coord in result]
 
-# Création de la figure
-
 # Fonction pour convertir un timecode en secondes
 def timecode_to_seconds(tc):
-    # Format attendu : HH:MM:SS:FF (FF = frames, ignoré ou converti selon fps)
     match = re.match(r"(\d+):(\d+):(\d+):(\d+)", str(tc))
     if not match:
         return 0.0
     h, m, s, f = map(int, match.groups())
-    # Supposons 25 fps pour la conversion des frames en secondes (adapter si besoin)
     fps = 25
     return h * 3600 + m * 60 + s + f / fps
 
@@ -171,7 +164,6 @@ csv_audio_path = f"Audio/{track_name}.csv"
 regions = []
 if os.path.exists(csv_audio_path):
     df_audio_csv = pd.read_csv(csv_audio_path)
-    # Supposons que le CSV a des colonnes 'Name' et 'Start'
     for _, row in df_audio_csv.iterrows():
         start_sec = timecode_to_seconds(row["Start"])
         region = {"name": row["Name"], "start": start_sec}
@@ -179,21 +171,21 @@ if os.path.exists(csv_audio_path):
 else:
     print(f"Fichier CSV non trouvé : {csv_audio_path}")
 
-# Vérifier que les marqueurs sont triés par temps
 regions = sorted(regions, key=lambda x: x["start"])
 
-# Extraire les noms et les timecodes
 region_names = [m["name"] for m in regions[:-1]]
 region_timecodes = [(regions[i]["start"], regions[i+1]["start"]) for i in range(len(regions)-1)]
 region_colors = ['red', 'orange', 'green', 'blue', 'purple', 'brown', 'pink', 'cyan', 'olive']
 
-# Normaliser les temps pour chaque point
 real_times = [coord[0] * total_duration for coord in result]
 
-plt.figure(figsize=(4 * len(region_names), 4))
+# Préparer le dossier de sortie
+output_dir = os.path.join("Results", "spat", f"{instrument_name}_{track_name}")
+os.makedirs(output_dir, exist_ok=True)
+os.makedirs(os.path.join(output_dir, "positions"), exist_ok=True)
+
 for i, (region_name, (start_time, end_time)) in enumerate(zip(region_names, region_timecodes)):
-    plt.subplot(1, len(region_names), i+1)
-    # Sélectionner les points de la région
+    plt.figure(figsize=(5, 5))
     region_indices = [j for j, t in enumerate(real_times) if start_time <= t < end_time]
     region_x = [x_coords[j] for j in region_indices]
     region_y = [y_coords[j] for j in region_indices]
@@ -202,14 +194,19 @@ for i, (region_name, (start_time, end_time)) in enumerate(zip(region_names, regi
     plt.xlabel('Coordonnée X')
     plt.ylabel('Coordonnée Y')
     plt.grid(True)
-    plt.axis('equal')
+    plt.gca().set_aspect('equal', adjustable='box')
     plt.xlim(-5, 5)
     plt.ylim(-5, 5)
     plt.legend()
-plt.tight_layout()
-plt.show()
+    plt.tight_layout()
+    # Sanitize region_name for filename
+    safe_region_name = re.sub(r'[\\/*?:"<>|]', "_", region_name).strip().replace(" ", "_")
+    output_path = os.path.join(output_dir, "positions", f"{instrument_name}_{track_name}_{safe_region_name}.png")
+    if not os.path.exists(output_path):
+        plt.savefig(output_path)
+        print(f"Figure enregistrée dans : {output_path}")
+    plt.close()
 
-# Calcul et affichage de la vitesse instantanée en fonction du temps
 x_coords_np = np.array(x_coords)
 y_coords_np = np.array(y_coords)
 real_times_np = np.array(real_times)
@@ -217,66 +214,79 @@ real_times_np = np.array(real_times)
 dx = np.diff(x_coords_np)
 dy = np.diff(y_coords_np)
 dt = np.diff(real_times_np)
-dt[dt == 0] = 1e-8  # éviter la division par zéro
+dt[dt == 0] = 1e-8
 
 vitesse = np.sqrt(dx**2 + dy**2) / dt
 temps_milieu = (real_times_np[:-1] + real_times_np[1:]) / 2
 
-# plt.figure(figsize=(12, 5))
-# plt.plot(temps_milieu, vitesse, color='blue', label='Vitesse instantanée')
-# plt.xlabel('Temps (s)')
-# plt.ylabel('Vitesse (u/s)')
-# plt.title(f"Vitesse de déplacement en fonction du temps\n{instrument_name} - \"{track_name}\"")
-# plt.grid(True)
+output_path = os.path.join(output_dir, f"vitesse_{instrument_name}_{track_name}.png")
 
-# # Affichage des frontières des régions
-# for i, (region_name, (start_time, end_time)) in enumerate(zip(region_names, region_timecodes)):
-#     plt.axvspan(start_time, end_time, color=region_colors[i % len(region_colors)], alpha=0.08)
-#     plt.axvline(start_time, color=region_colors[i % len(region_colors)], linestyle='--', alpha=0.7)
-#     plt.text((start_time + end_time) / 2, plt.ylim()[1]*0.95, region_name, color=region_colors[i % len(region_colors)],
-#              ha='center', va='top', fontsize=10, alpha=0.8, rotation=0)
+plt.figure(figsize=(12, 5))
+plt.plot(temps_milieu, vitesse, color='blue', label='Vitesse instantanée')
+plt.xlabel('Temps (s)')
+plt.ylabel('Vitesse (u/s)')
+plt.title(f"Vitesse de déplacement en fonction du temps\n{instrument_name} - \"{track_name}\"")
+plt.grid(True)
 
-# plt.tight_layout()
-# plt.show()
- 
+for i, (region_name, (start_time, end_time)) in enumerate(zip(region_names, region_timecodes)):
+    plt.axvspan(start_time, end_time, color=region_colors[i % len(region_colors)], alpha=0.08)
+    plt.axvline(start_time, color=region_colors[i % len(region_colors)], linestyle='--', alpha=0.7)
+    ylim = plt.ylim()
+    y_base = ylim[1] * 0.95
+    y_offset = (ylim[1] - ylim[0]) * 0.05
+    y_text = y_base - (i % 2) * y_offset
+    plt.text((start_time + end_time) / 2, y_text, region_name[0:3], color=region_colors[i % len(region_colors)],
+             ha='center', va='top', fontsize=10, alpha=0.8, rotation=0)
+
+plt.tight_layout()
+plt.savefig(output_path)
+plt.close()
 
 
-# Création d'une graine pour la reproductibilité
-np.random.seed(2)
+## ================== FIN AFFICHAGE SPATIALISATION ================== ##
 
-# Augmenter la résolution de la heatmap
-heatmap_size = 50  # Par exemple, passer de 20 à 50
 
-# Génération d'un tableau heatmap_size x heatmap_size basé sur les coordonnées x et y
-heatmap, xedges, yedges = np.histogram2d(
-    x_coords, y_coords, bins=heatmap_size, range=[[-5, 5], [-5, 5]]
-)
-data = heatmap.astype(int)
+
+
+## ================== HEATMAP =================== ##
+
+
+# # Création d'une graine pour la reproductibilité
+# np.random.seed(2)
+
+# # Augmenter la résolution de la heatmap
+# heatmap_size = 50  # Par exemple, passer de 20 à 50
+
+# # Génération d'un tableau heatmap_size x heatmap_size basé sur les coordonnées x et y
+# heatmap, xedges, yedges = np.histogram2d(
+#     x_coords, y_coords, bins=heatmap_size, range=[[-5, 5], [-5, 5]]
+# )
+# data = heatmap.astype(int)
 
 # plt.figure(figsize=(8, 7))
 # plt.imshow(data, cmap='Blues', origin='lower', extent=[-5, 5, -5, 5], aspect='auto')
 
 # plt.colorbar()
 
-# Annotation des valeurs (optionnel, peut être illisible si heatmap_size est grand)
-if heatmap_size <= 30:
-    for i in range(data.shape[0]):
-        for j in range(data.shape[1]):
-            plt.text(
-                xedges[j] + (xedges[1] - xedges[0]) / 2,
-                yedges[i] + (yedges[1] - yedges[0]) / 2,
-                '%d' % data[i, j],
-                horizontalalignment='center',
-                verticalalignment='center',
-                fontsize=7
-            )
+# # Annotation des valeurs (optionnel, peut être illisible si heatmap_size est grand)
+# if heatmap_size <= 30:
+#     for i in range(data.shape[0]):
+#         for j in range(data.shape[1]):
+#             plt.text(
+#                 xedges[j] + (xedges[1] - xedges[0]) / 2,
+#                 yedges[i] + (yedges[1] - yedges[0]) / 2,
+#                 '%d' % data[i, j],
+#                 horizontalalignment='center',
+#                 verticalalignment='center',
+#                 fontsize=7
+#             )
 
-# Création de listes d'étiquettes de coche (10 ticks pour lisibilité)
-num_ticks = 10
-x_tick_positions = np.linspace(-5, 5, num_ticks)
-y_tick_positions = np.linspace(-5, 5, num_ticks)
-x_labels = [f"{x:.1f}" for x in x_tick_positions]
-y_labels = [f"{y:.1f}" for y in y_tick_positions]
+# # Création de listes d'étiquettes de coche (10 ticks pour lisibilité)
+# num_ticks = 10
+# x_tick_positions = np.linspace(-5, 5, num_ticks)
+# y_tick_positions = np.linspace(-5, 5, num_ticks)
+# x_labels = [f"{x:.1f}" for x in x_tick_positions]
+# y_labels = [f"{y:.1f}" for y in y_tick_positions]
 
 # plt.xticks(x_tick_positions, labels=x_labels)
 # plt.yticks(y_tick_positions, labels=y_labels)
@@ -287,30 +297,21 @@ y_labels = [f"{y:.1f}" for y in y_tick_positions]
 # plt.show()
 
 
-import wave
-import contextlib
-import audioop
-import numpy as np
-from scipy.ndimage import label
+## ================== FIN HEATMAP =================== ##
+
+
+
+
+## ================== ANALYSE AUDIO RMS ================== ##
+
 from scipy.io import wavfile
-import re
 
-with contextlib.closing(wave.open(fname, 'rb')) as f:
-    frames = f.getnframes()
-    rate = f.getframerate()
-    duration = frames / float(rate)
-    width = f.getsampwidth()
-    channel = f.getnchannels()
-    wav = f.readframes(frames)
-rate, data = wavfile.read(fname)
+import warnings
+import random
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    rate, data = wavfile.read(fname)
 
-print(rate)
-
-data_channels = []
-num_instruments = data.shape[1] - 1  # On suppose que le premier canal est le "clic"
-for i in range(num_instruments):
-    channel_idx = i + 1  # Décalage de 1 pour ignorer le "clic"
-    data_channels.append(data[:, channel_idx])
 
 # Pour compatibilité avec la suite du code, on garde data0 pour l'instrument sélectionné
 channel_idx = index_file_instrument + 1  # L'audio comporte le chan "clic" qui ne nous intéresse pas
@@ -334,6 +335,7 @@ for i in range(num_windows):
         rms = alpha * rms + (1 - alpha) * rms_values[-1]
     rms_values.append(rms)
 
+
 # Normalisation des valeurs RMS pour avoir une échelle plus simple (par exemple, entre 0 et 10)
 rms_values = np.array(rms_values)
 rms_max = np.max(rms_values)
@@ -343,8 +345,9 @@ else:
     rms_values_norm = rms_values
 
 # Détection des périodes où l'instrument NE JOUE PAS (seulement si la durée dépasse seuil_temps)
+
 seuil_rms = 1  # seuil sur l'échelle normalisée (0-10)
-seuil_temps_non_joue = 2   # durée minimale (en secondes) pour considérer que l'instrument NE joue PAS
+seuil_temps_non_joue = 2  # durée minimale (en secondes) pour considérer que l'instrument NE joue PAS
 seuil_temps_joue = 2       # durée minimale (en secondes) pour considérer que l'instrument JOUE vraiment
 
 joue = rms_values_norm > seuil_rms
@@ -366,6 +369,7 @@ if start_idx is not None:
     if duration >= seuil_temps_non_joue:
         non_joue_periods.append((start_idx * window_sec, len(joue) * window_sec))
 
+
 # Calcul des intervalles où ça joue (tout le reste)
 joue_periods = []
 prev_end = 0.0
@@ -379,9 +383,12 @@ if prev_end < len(joue) * window_sec:
 
 # Filtrer les périodes où ça joue pour ne garder que celles d'une durée suffisante
 joue_periods_filtrees = []
+joue_ponctuel = []
 for start, end in joue_periods:
     if (end - start) >= seuil_temps_joue:
         joue_periods_filtrees.append((start, end))
+    else:
+        joue_ponctuel.append((start, end))
 
 
 plt.figure(figsize=(10, 4))
@@ -397,12 +404,48 @@ for region in regions:
     else:   
         color = 'red'
     plt.axvline(region["start"], color=color, linestyle='--', alpha=0.7)
-    plt.text(region["start"], plt.ylim()[1]*0.95, region["name"], color=color, ha='left', va='top', fontsize=9, rotation=90)
+    plt.text(region["start"], plt.ylim()[1]*0.95, region["name"][0:3], color=color, ha='left', va='top', fontsize=9, rotation=90)
 
 plt.xlabel('Temps (s)')
 plt.ylabel('RMS (normalisé)')
-plt.title(f"RMS Canal 1 de {instrument_name} - \"{track_name}\" (échelle normalisée)")
+plt.title(f"RMS {instrument_name} - \"{track_name}\" (échelle normalisée)")
 plt.grid(True)
 plt.legend()
 plt.tight_layout()
-plt.show()
+output_dir = os.path.join("Results", "rms")
+os.makedirs(output_dir, exist_ok=True)
+output_path = os.path.join(output_dir, f"rms_{instrument_name}_{track_name}.png")
+plt.savefig(output_path)
+print(f"Figure enregistrée dans : {output_path}")
+plt.close()
+
+## ================== FIN ANALYSE AUDIO RMS ================== ##
+
+# Affichage de la courbe de vitesse avec les périodes où l'instrument joue ou non
+
+output_dir = os.path.join("Results", "mix")
+os.makedirs(output_dir, exist_ok=True)
+
+plt.figure(figsize=(12, 5))
+plt.plot(temps_milieu, vitesse, color='blue', label='Vitesse instantanée')
+
+# Affichage des périodes où l'instrument joue (en vert) et ne joue pas (en rouge pâle)
+for (start, end) in joue_periods_filtrees:
+    plt.axvspan(start, end, color='green', alpha=0.15, label='Instrument joue' if 'Instrument joue' not in plt.gca().get_legend_handles_labels()[1] else "")
+# Affichage des périodes où l'instrument ne joue pas
+for (start, end) in non_joue_periods:
+    plt.axvspan(start, end, color='red', alpha=0.08, label='Instrument ne joue pas' if 'Instrument ne joue pas' not in plt.gca().get_legend_handles_labels()[1] else "")
+
+for (start, end) in joue_ponctuel:
+    plt.axvspan(start, end, color='orange', alpha=0.15, label='Instrument joue ponctuellement' if 'Instrument joue ponctuellement' not in plt.gca().get_legend_handles_labels()[1] else "")
+
+plt.xlabel('Temps (s)')
+plt.ylabel('Vitesse (u/s)')
+plt.title(f"Vitesse et périodes de jeu\n{instrument_name} - \"{track_name}\"")
+plt.grid(True)
+plt.legend()
+plt.tight_layout()
+output_path = os.path.join(output_dir, f"vitesse_avec_jeu_{instrument_name}_{track_name}.png")
+plt.savefig(output_path)
+print(f"Figure enregistrée dans : {output_path}")
+plt.close()
