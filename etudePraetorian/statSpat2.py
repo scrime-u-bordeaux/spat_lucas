@@ -11,7 +11,7 @@ for filename in os.listdir(seq_dir):
         data[filename] = pd.read_csv(file_path, header=None)
 
 ###############
-select_instrument = 4
+select_instrument = 1
 ###############
 # INFO
 
@@ -58,13 +58,6 @@ if current_figures:
 
 
 
-# # Vérification de la longueur minimale avant le zippage
-# lengths = [len(track_indices), len(track_names), len(figures_groups)]
-# min_length = min(lengths)
-# min_list_name = ["track_indices", "track_names", "figures_groups"][lengths.index(min_length)]
-# print(f"La liste la moins longue est : {min_list_name} ({min_length} éléments)")
-
-# Sorting the data
 combined = sorted(
     itertools.zip_longest(track_indices, track_names, figures_groups),
     key=lambda x: (x[0] if x[0] is not None else float('inf'))
@@ -74,7 +67,7 @@ track_indices, track_names, figures_groups = zip(*combined)
 
 
 ###############
-selectedNumTrack = 1
+selectedNumTrack = 2
 ###############
 # INFO
 
@@ -180,9 +173,10 @@ region_colors = ['red', 'orange', 'green', 'blue', 'purple', 'brown', 'pink', 'c
 real_times = [coord[0] * total_duration for coord in result]
 
 # Préparer le dossier de sortie
-output_dir = os.path.join("Results", "spat", f"{instrument_name}_{track_name}")
+output_dir = os.path.join("Results", "spat", track_name, instrument_name)
 os.makedirs(output_dir, exist_ok=True)
-os.makedirs(os.path.join(output_dir, "positions"), exist_ok=True)
+positions_dir = os.path.join(output_dir, "positions")
+os.makedirs(positions_dir, exist_ok=True)
 
 for i, (region_name, (start_time, end_time)) in enumerate(zip(region_names, region_timecodes)):
     plt.figure(figsize=(5, 5))
@@ -201,7 +195,7 @@ for i, (region_name, (start_time, end_time)) in enumerate(zip(region_names, regi
     plt.tight_layout()
     # Sanitize region_name for filename
     safe_region_name = re.sub(r'[\\/*?:"<>|]', "_", region_name).strip().replace(" ", "_")
-    output_path = os.path.join(output_dir, "positions", f"{instrument_name}_{track_name}_{safe_region_name}.png")
+    output_path = os.path.join(positions_dir, f"{instrument_name}_{track_name}_{safe_region_name}.png")
     if not os.path.exists(output_path):
         plt.savefig(output_path)
         print(f"Figure enregistrée dans : {output_path}")
@@ -312,7 +306,6 @@ with warnings.catch_warnings():
     warnings.simplefilter("ignore")
     rate, data = wavfile.read(fname)
 
-
 # Pour compatibilité avec la suite du code, on garde data0 pour l'instrument sélectionné
 channel_idx = index_file_instrument + 1  # L'audio comporte le chan "clic" qui ne nous intéresse pas
 data_instr = data[:, channel_idx]
@@ -334,7 +327,6 @@ for i in range(num_windows):
         alpha = 0.2  # 1 = pas de smoothing, 0 = maximum smoothing
         rms = alpha * rms + (1 - alpha) * rms_values[-1]
     rms_values.append(rms)
-
 
 # Normalisation des valeurs RMS pour avoir une échelle plus simple (par exemple, entre 0 et 10)
 rms_values = np.array(rms_values)
@@ -369,7 +361,6 @@ if start_idx is not None:
     if duration >= seuil_temps_non_joue:
         non_joue_periods.append((start_idx * window_sec, len(joue) * window_sec))
 
-
 # Calcul des intervalles où ça joue (tout le reste)
 joue_periods = []
 prev_end = 0.0
@@ -390,7 +381,6 @@ for start, end in joue_periods:
     else:
         joue_ponctuel.append((start, end))
 
-
 plt.figure(figsize=(10, 4))
 plt.plot(np.arange(len(rms_values_norm)) * window_sec, rms_values_norm, label='RMS Canal 1 (normalisé)')
 for (start, end) in joue_periods_filtrees:
@@ -408,11 +398,12 @@ for region in regions:
 
 plt.xlabel('Temps (s)')
 plt.ylabel('RMS (normalisé)')
-plt.title(f"RMS {instrument_name} - \"{track_name}\" (échelle normalisée)")
+plt.title(f"RMS {instrument_name} - \"{track_name}\" ")
 plt.grid(True)
 plt.legend()
 plt.tight_layout()
-output_dir = os.path.join("Results", "rms")
+# Nouveau dossier de sortie : Results/rms/<track_name>/<instrument_name>
+output_dir = os.path.join("Results", "rms", track_name)
 os.makedirs(output_dir, exist_ok=True)
 output_path = os.path.join(output_dir, f"rms_{instrument_name}_{track_name}.png")
 plt.savefig(output_path)
@@ -423,7 +414,8 @@ plt.close()
 
 # Affichage de la courbe de vitesse avec les périodes où l'instrument joue ou non
 
-output_dir = os.path.join("Results", "mix")
+# Nouveau dossier de sortie : Results/mix/<track_name>/<instrument_name>
+output_dir = os.path.join("Results", "mix", track_name)
 os.makedirs(output_dir, exist_ok=True)
 
 plt.figure(figsize=(12, 5))
@@ -441,11 +433,11 @@ for (start, end) in joue_ponctuel:
 
 plt.xlabel('Temps (s)')
 plt.ylabel('Vitesse (u/s)')
-plt.title(f"Vitesse et périodes de jeu\n{instrument_name} - \"{track_name}\"")
+plt.title(f"mix spat / rms\n{instrument_name} - \"{track_name}\"")
 plt.grid(True)
 plt.legend()
 plt.tight_layout()
-output_path = os.path.join(output_dir, f"vitesse_avec_jeu_{instrument_name}_{track_name}.png")
+output_path = os.path.join(output_dir, f"mix_{instrument_name}_{track_name}.png")
 plt.savefig(output_path)
 print(f"Figure enregistrée dans : {output_path}")
 plt.close()
