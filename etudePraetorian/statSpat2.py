@@ -11,7 +11,7 @@ for filename in os.listdir(seq_dir):
         data[filename] = pd.read_csv(file_path, header=None)
 
 ###############
-select_instrument = 1
+select_instrument = 3
 ###############
 # INFO
 
@@ -67,7 +67,7 @@ track_indices, track_names, figures_groups = zip(*combined)
 
 
 ###############
-selectedNumTrack = 2
+selectedNumTrack = 1
 ###############
 # INFO
 
@@ -199,6 +199,146 @@ for i, (region_name, (start_time, end_time)) in enumerate(zip(region_names, regi
     if not os.path.exists(output_path):
         plt.savefig(output_path)
         print(f"Figure enregistrée dans : {output_path}")
+    plt.close()
+
+    # Ajout : Heatmap des positions pour cette région
+    if region_x and region_y:
+        plt.figure(figsize=(5, 5))
+        heatmap_size = 10  # résolution de la heatmap (plus petit = plus gros carrés)
+        heatmap, xedges, yedges = np.histogram2d(
+            region_x, region_y, bins=heatmap_size, range=[[-5, 5], [-5, 5]]
+        )
+        plt.imshow(
+            heatmap.T, cmap='hot', origin='lower',
+            extent=[-5, 5, -5, 5], aspect='auto'
+        )
+        plt.colorbar(label='Densité')
+        plt.title(f'Heatmap {instrument_name}\n"{track_name}"\n{region_name}\n{start_time:.2f}s - {end_time:.2f}s')
+        plt.xlabel('Coordonnée X')
+        plt.ylabel('Coordonnée Y')
+        plt.grid(False)
+        plt.gca().set_aspect('equal', adjustable='box')
+        plt.xlim(-5, 5)
+        plt.ylim(-5, 5)
+        plt.tight_layout()
+        # Nouveau dossier heatmap
+        heatmap_dir = os.path.join(output_dir, "heatmap")
+        os.makedirs(heatmap_dir, exist_ok=True)
+        heatmap_path = os.path.join(heatmap_dir, f"{instrument_name}_{track_name}_{safe_region_name}_heatmap.png")
+        if not os.path.exists(heatmap_path):
+            plt.savefig(heatmap_path)
+            print(f"Heatmap enregistrée dans : {heatmap_path}")
+        plt.close()
+
+# Ajout : Heatmap par instrument pour ce morceau
+for idx_instr, instr_name in indexInstrument.items():
+    fname_seq = f"{instr_name}.txt"
+    if fname_seq in data:
+        df_instr = data[fname_seq]
+        figures_groups_instr = []
+        current_figures_instr = []
+        for idx, value in enumerate(df_instr.iloc[:, 1].values):
+            value_str = str(value)
+            if value_str.strip().startswith("id"):
+                if current_figures_instr:
+                    figures_groups_instr.append(current_figures_instr)
+                    current_figures_instr = []
+            else:
+                current_figures_instr.append(' '.join(value_str.rstrip(';').strip().split()))
+        if current_figures_instr:
+            figures_groups_instr.append(current_figures_instr)
+        if selected_track_index < len(figures_groups_instr):
+            figures_instr = figures_groups_instr[selected_track_index]
+            instr_x, instr_y = [], []
+            for value in figures_instr:
+                parts = value.split()
+                if len(parts) >= 3:
+                    try:
+                        instr_x.append(float(parts[-2]))
+                        instr_y.append(float(parts[-1]))
+                    except Exception:
+                        continue
+            if instr_x and instr_y:
+                plt.figure(figsize=(6, 6))
+                heatmap_size = 20
+                heatmap, xedges, yedges = np.histogram2d(
+                    instr_x, instr_y, bins=heatmap_size, range=[[-5, 5], [-5, 5]]
+                )
+                plt.imshow(
+                    heatmap.T, cmap='hot', origin='lower',
+                    extent=[-5, 5, -5, 5], aspect='auto'
+                )
+                plt.colorbar(label='Densité')
+                plt.title(f'Heatmap {instr_name}\n"{track_name}"')
+                plt.xlabel('Coordonnée X')
+                plt.ylabel('Coordonnée Y')
+                plt.grid(False)
+                plt.gca().set_aspect('equal', adjustable='box')
+                plt.xlim(-5, 5)
+                plt.ylim(-5, 5)
+                plt.tight_layout()
+                # Dossier heatmap par instrument
+                heatmap_dir = os.path.join("Results", "spat", track_name, instr_name, "heatmap")
+                os.makedirs(heatmap_dir, exist_ok=True)
+                heatmap_path = os.path.join(heatmap_dir, f"{instr_name}_{track_name}_heatmap.png")
+                plt.savefig(heatmap_path)
+                print(f"Heatmap {instr_name} enregistrée dans : {heatmap_path}")
+                plt.close()
+
+# Ajout : Heatmap de tous les instruments pour ce morceau
+all_x, all_y = [], []
+for idx_instr, instr_name in indexInstrument.items():
+    fname_seq = f"{instr_name}.txt"
+    if fname_seq in data:
+        df_instr = data[fname_seq]
+        figures_groups_instr = []
+        current_figures_instr = []
+        for idx, value in enumerate(df_instr.iloc[:, 1].values):
+            value_str = str(value)
+            if value_str.strip().startswith("id"):
+                if current_figures_instr:
+                    figures_groups_instr.append(current_figures_instr)
+                    current_figures_instr = []
+            else:
+                current_figures_instr.append(' '.join(value_str.rstrip(';').strip().split()))
+        if current_figures_instr:
+            figures_groups_instr.append(current_figures_instr)
+        if selected_track_index < len(figures_groups_instr):
+            figures_instr = figures_groups_instr[selected_track_index]
+            for value in figures_instr:
+                parts = value.split()
+                if len(parts) >= 3:
+                    try:
+                        all_x.append(float(parts[-2]))
+                        all_y.append(float(parts[-1]))
+                    except Exception:
+                        continue
+
+if all_x and all_y:
+    plt.figure(figsize=(6, 6))
+    heatmap_size = 20
+    heatmap, xedges, yedges = np.histogram2d(
+        all_x, all_y, bins=heatmap_size, range=[[-5, 5], [-5, 5]]
+    )
+    plt.imshow(
+        heatmap.T, cmap='hot', origin='lower',
+        extent=[-5, 5, -5, 5], aspect='auto'
+    )
+    plt.colorbar(label='Densité')
+    plt.title(f'Heatmap TOUS INSTRUMENTS\n"{track_name}"')
+    plt.xlabel('Coordonnée X')
+    plt.ylabel('Coordonnée Y')
+    plt.grid(False)
+    plt.gca().set_aspect('equal', adjustable='box')
+    plt.xlim(-5, 5)
+    plt.ylim(-5, 5)
+    plt.tight_layout()
+    # Dossier heatmap global
+    heatmap_dir = os.path.join("Results", "spat", track_name, "ALL")
+    os.makedirs(heatmap_dir, exist_ok=True)
+    heatmap_path = os.path.join(heatmap_dir, f"ALL_{track_name}_heatmap.png")
+    plt.savefig(heatmap_path)
+    print(f"Heatmap TOUS INSTRUMENTS enregistrée dans : {heatmap_path}")
     plt.close()
 
 x_coords_np = np.array(x_coords)
