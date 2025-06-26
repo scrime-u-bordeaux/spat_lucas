@@ -2,6 +2,7 @@ import os
 import pandas as pd
 import matplotlib.pyplot as plt
 import itertools
+import sys
 
 seq_dir = os.path.join(os.path.dirname(__file__), 'seq')
 data = {}
@@ -9,6 +10,9 @@ for filename in os.listdir(seq_dir):
     file_path = os.path.join(seq_dir, filename)
     if os.path.isfile(file_path):
         data[filename] = pd.read_csv(file_path, header=None)
+
+print(data.keys())    
+sys.exit(0)
 
 ###############
 select_instrument = 3
@@ -24,7 +28,6 @@ indexInstrument = {
     5: "BatterieG",
     6: "BatterieD",
 }
-
 
 
 instrument_name = indexInstrument[select_instrument]
@@ -80,8 +83,6 @@ selectedNumTrack = 1
 # 7 - NOUVEAU DIABLE
 # 8 - BALLADE ENTRE LES MINES 
 # 9 - TEMPS MORT
-
-
 
 selected_track_index = selectedNumTrack - 1
 figures = figures_groups[selected_track_index]
