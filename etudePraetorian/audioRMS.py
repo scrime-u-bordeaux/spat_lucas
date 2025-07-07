@@ -88,7 +88,6 @@ def plot_rms(rms_values_norm, window_sec, joue_periods_filtrees, regions, instru
 def usage(track_idx, instrument_idx):
     print(f"Usage: python {sys.argv[0]} <track_index> <instrument_index>")
     print(f"Example: python {sys.argv[0]} {track_idx} {instrument_idx}")
-    print("If you want to analyze all instruments for a track, use -1 for instrument_index.")
     sys.exit(1)
 
 def analyse_audio_rms(track_idx, instrument_idx):

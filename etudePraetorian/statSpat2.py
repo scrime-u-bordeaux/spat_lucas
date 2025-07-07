@@ -339,7 +339,7 @@ if all_x and all_y:
     os.makedirs(heatmap_dir, exist_ok=True)
     heatmap_path = os.path.join(heatmap_dir, f"ALL_{track_name}_heatmap.png")
     plt.savefig(heatmap_path)
-    print(f"Heatmap TOUS INSTRUMENTS enregistrée dans : {heatmap_path}")
+    print(f"Heatmap TOUT INSTRUMENTS enregistrée dans : {heatmap_path}")
     plt.close()
 
 x_coords_np = np.array(x_coords)
