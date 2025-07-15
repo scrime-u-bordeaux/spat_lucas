@@ -41,7 +41,7 @@ def timecode_to_seconds(tc):
         return sec + ms / 1000
     return 0.0
 
-def get_regions_from_csv(track_name_file):
+def get_regions_from_name(track_name_file):
     print(f"Récupération des régions audio pour le fichier : {track_name_file}")
     csv_audio_path = f"Audio/{track_name_file}.csv"
     regions = []
@@ -61,6 +61,14 @@ def get_instrument_name(index):
     except (ValueError, TypeError):
         return "Inconnu"
     return indexInstrument.get(idx, "Inconnu")
+
+
+def get_track_name(index):
+    try:
+        idx = int(index)
+    except (ValueError, TypeError):
+        return "Inconnu"
+    return indexTitre.get(idx, "Inconnu")
 
 
 

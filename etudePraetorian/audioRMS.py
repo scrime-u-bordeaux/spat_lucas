@@ -127,4 +127,7 @@ def analyse_audio_rms(track_idx, instrument_idx):
         "regions": regions,
         "rate": rate,
     }
+
+if __name__ == "__main__":
+    analyse_audio_rms(1, 0)
     

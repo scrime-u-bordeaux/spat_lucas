@@ -3,7 +3,7 @@ import itertools
 import pandas as pd
 import wave
 import contextlib
-from Utils import get_instrument_name, get_regions_from_csv
+from Utils import get_instrument_name, get_regions_from_name
 
 SEQ_DIR = os.path.join(os.path.dirname(__file__), 'seq')
 AUDIO_DIR = os.path.join(os.path.dirname(__file__), 'Audio')
@@ -112,7 +112,7 @@ def process_track(
             "result": combined_raw,
             "resampled_result": combined_resampled,
             "total_duration": total_duration,  # multiple tracks, so undefined
-            "regions": get_regions_from_csv(track_name)
+            "regions": get_regions_from_name(track_name)
         }
 
     ## =========== Un seul instrument ============ ##
@@ -191,5 +191,5 @@ def process_track(
             "result": raw_result,
             "resampled_result": resampled,
             "total_duration": total_duration,
-            "regions": get_regions_from_csv(track_name)
+            "regions": get_regions_from_name(track_name)
         }
