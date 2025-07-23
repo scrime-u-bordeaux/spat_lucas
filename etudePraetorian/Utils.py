@@ -1,5 +1,6 @@
 import re
 import os
+import sys
 import pandas as pd
 
 indexInstrument = {
@@ -39,18 +40,26 @@ def timecode_to_seconds(tc):
         sec = int(match_decimal.group(1))
         ms = int(match_decimal.group(2))
         return sec + ms / 1000
-    return 0.0
+    return None
 
 def get_regions_from_name(track_name_file):
-    print(f"Récupération des régions audio pour le fichier : {track_name_file}")
-    csv_audio_path = f"Audio/{track_name_file}.csv"
+    base_dir = os.path.dirname(__file__)  # le dossier contenant ce fichier
+    csv_audio_path = os.path.join(base_dir, "Audio", f"{track_name_file}.csv")
+    print(f"Chemin du fichier CSV audio : {csv_audio_path}")
     regions = []
     if os.path.exists(csv_audio_path):
         df_audio_csv = pd.read_csv(csv_audio_path)
-        for _, row in df_audio_csv.iterrows():
-            start_sec = timecode_to_seconds(row["Start"])
-            region = {"name": row["Name"], "start": start_sec}
-            regions.append(region)
+        if not df_audio_csv.empty:
+            # Ajout d'une première région fictive "Silence" avant le début de la musique
+            first_start = timecode_to_seconds(df_audio_csv.iloc[0]["Start"])
+            regions.append({"name": "Silence", "start": 0.0})
+
+            for _, row in df_audio_csv.iterrows():
+                start_sec = timecode_to_seconds(row["Start"])
+                region = {"name": row["Name"], "start": start_sec}
+                if start_sec is None or start_sec <= 0.0:
+                    continue
+                regions.append(region)
     else:
         print(f"Fichier CSV non trouvé : {csv_audio_path}")
     return sorted(regions, key=lambda x: x["start"])
@@ -63,12 +72,28 @@ def get_instrument_name(index):
     return indexInstrument.get(idx, "Inconnu")
 
 
-def get_track_name(index):
+def get_track_name(index, reading_file=False):
     try:
         idx = int(index)
     except (ValueError, TypeError):
         return "Inconnu"
-    return indexTitre.get(idx, "Inconnu")
+    name = indexTitre.get(idx, "Inconnu")
+    if reading_file:
+        name = name.lower().replace("'", "-").replace(" ", "-")
+        name = name[0].upper() + name[1:] if name else name
+    return name
 
+def evaluate_range_dataset(csv):
+    df = pd.read_csv(csv)
+    for column in df.columns:
+        try:
+            min_val = df[column].min()
+            max_val = df[column].max()
+            print(f"{column}:")
+            print(f"  Min: {min_val}")
+            print(f"  Max: {max_val}")
+        except Exception as e:
+            print(f"{column}: erreur lors de l’analyse ({e})")
+    return df
 
 
