@@ -22,4 +22,17 @@ Il s'agit ici de produire du contenu visuelle, comme des graphiques 2d et 3d, af
 Ici on utilise et formate les données afin de réaliser un entrainement. L'objectif est de produire une serie de coordonnées pour un instrument. Cette dernière pourra ensuite être exploité sur le logiciel MaxMSP
 
 
-A noter : Lorsque vous souhaitez lancer un fichier python, placez vous au sein de l'un des deux dossier (en fonction de ce que vous souhaitez réaliser).
+# Utilisation de l'application
+L'intégralité se passe au sein du repertoire "EtudePraetorian
+## Data Training
+Pour executer correctement le code, il faut se placer dans le repertoire "DataTraining"
+### Génération des dataset
+La première étape sera de générer les dataset qui nous permettrons par la suite d'entrainer notre modèle. Vous pouvez executer _get_dataset_ pour cela.
+Plusieurs paramètres sont modifiables : le TIME_SAMPLE, INSTRUMENT_IDX et TRACK_IDX. Les deux premiers concernent le choix de l'instrument traité ainsi que la chanson. Le troisième propose de modifier l'échantillonage réalisé pour le dataset. (Si c'est 20, on decoupera la chanson toutes les 20ms, et on aura toutes les informations qui nous intéressent associés à ce moment la).
+
+/!\ Pour l'instant (24/07/2025), il n'est pas pertinant de toucher à l'instrument et à l'échantillonage. On ne travail qu'avac la guitare actuellement.
+
+### Entrainement du model
+Une fois les models générés, vous pouvez executer le code python "ML.py". Ce dernier va pouvoir s'en saisir pour réaliser un entrainement. Actuellement il utilise tous les datasets pour l'entrainement à l'exception du dernier qui sera testé. (Il est donc préférable que les dataset de toutes les chansons soient générés).
+Possibilité de changer le model. C'est un travail en cours, les résultats affichés dans la console seront de l'ordre d'extrême impertience car models inadaptés.
+
