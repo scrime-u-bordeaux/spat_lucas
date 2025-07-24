@@ -1,5 +1,6 @@
 DATASET_FOLDER = "resampled_results/"
 RESULT_FOLDER = "Results/"
+RESULT_FOLDER_PREDICT = "Results/Predict_coords/"
 RESULT_FOLDER_MAX = "Results/MaxData/"
 
 import pandas as pd
@@ -40,10 +41,8 @@ def load_all_datasets(folder):
 
 
 def main():
-    # Chargement des données d'entraînement et de test
+    # Load all training and test datasets
     df_train, df_test = load_all_datasets(DATASET_FOLDER)
-
-    print(len(df_test), len(df_train))
 
     label_encoder = LabelEncoder()
     df_train['region_encoded'] = label_encoder.fit_transform(df_train['region'])
@@ -67,7 +66,7 @@ def main():
 
     y_pred = model.predict(X_test_scaled)
 
-    # Évaluation
+    # Evaluation
     mse = mean_squared_error(y_test, y_pred)
     mae = mean_absolute_error(y_test, y_pred)
     mape = mean_absolute_percentage_error(y_test, y_pred)
@@ -102,15 +101,11 @@ def write_coord_in_file(y_pred, filename="predicted_coordinates.csv"):
     """
     Écrit uniquement les coordonnées prédites x et y dans un fichier CSV.
     """
-    # Création du dossier s’il n’existe pas
+
     os.makedirs(RESULT_FOLDER, exist_ok=True)
 
-    # Création du DataFrame uniquement avec les coordonnées
     df_coords = pd.DataFrame(y_pred, columns=["x_pred", "y_pred"])
 
-    # Sauvegarde dans le fichier
-    # Ajout du nom de la classe du modèle au nom du fichier
-    # On récupère le nom du modèle depuis la pile d'appels
     frame = inspect.currentframe()
     while frame:
         if 'model' in frame.f_locals:
@@ -132,25 +127,19 @@ Parameters:
   csv_file: The path to the CSV file containing the predicted coordinates.
     """
 def convert_to_max_data(csv_file):
-    # Charger les données CSV (modifie le chemin si besoin)
     df = pd.read_csv(csv_file)
 
-    # Initialisation
     output_lines = []
-    frame_duration = 0.02  # 20 ms
     n_frames = len(df)
-    index = 1  # on commence à 1, car ligne 0 est le nom du morceau
+    index = 1  # starting with 1 because 0 is the name of the track
 
-    # Ajoute la première ligne (nom du morceau)
     output_lines.append("0, id 09-Temps-Mort;")
 
-    # On garde la première coordonnée
     last_x, last_y = df.iloc[0]['x_pred'], df.iloc[0]['y_pred']
     norm_time = 0.0
     output_lines.append(f"{index}, {norm_time:.6f} {last_x:.6f} {last_y:.6f};")
     index += 1
 
-    # Parcours des lignes suivantes
     for i in range(1, n_frames):
         x, y = df.iloc[i]['x_pred'], df.iloc[i]['y_pred']
         norm_time = i / (n_frames - 1) if n_frames > 1 else 0.0  # Normalisé entre 0 et 1
@@ -159,7 +148,6 @@ def convert_to_max_data(csv_file):
             last_x, last_y = x, y
             index += 1
 
-    # Sauvegarde dans un fichier
     os.makedirs(RESULT_FOLDER_MAX, exist_ok=True)
     with open(os.path.join(RESULT_FOLDER_MAX, "seq3.txt"), "w") as f:
         for line in output_lines:
@@ -167,6 +155,9 @@ def convert_to_max_data(csv_file):
 
 
 if __name__ == "__main__":
-    # main()
-    csv_file = os.path.join(RESULT_FOLDER, "LinearRegression_predicted_coordinates.csv")
-    convert_to_max_data(csv_file)
+    main()
+
+    # Convert the predicted coordinates to Max/MSP format
+
+    # csv_file = os.path.join(RESULT_FOLDER_PREDICT, "LinearRegression_predicted_coordinates.csv")
+    # convert_to_max_data(csv_file)

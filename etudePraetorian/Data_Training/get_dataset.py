@@ -7,11 +7,13 @@ import numpy as np
 import os   
 import re
 import warnings
+import sys
 
-
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from Utils import get_track_name
 from Utils import get_regions_from_name, indexInstrument
 from Data_Visualization.audioRMS import detect_periods
+import sys
 
 """
     Create Dataset from parsed data in order to train a model.
@@ -118,7 +120,6 @@ def resample(times, total_duration, *datas):
    """
 def parse_spat_data(print_times=False):
     filename = f"{indexInstrument[INSTRUMENT_IDX + 1]}.txt"
-    print(filename, "OUAIIII")
     df = pd.read_csv(os.path.join(SEQ_DIR, filename), header=None)
 
     track_indices, track_names, figures_groups = [], [], []
@@ -150,7 +151,6 @@ def parse_spat_data(print_times=False):
     if not os.path.exists(audio_path):
         raise FileNotFoundError(f"Fichier audio {track_name}.wav introuvable")
     total_duration = get_audio_duration(audio_path)
-    print(f"Durée totale (spat): {total_duration:.2f} s")
 
     real_times, x_coords, y_coords = zip(*[
         (float(parts[-3]) * total_duration, float(parts[-2]), float(parts[-1]))
@@ -159,9 +159,9 @@ def parse_spat_data(print_times=False):
 
     print(f"Nombre de points spatiaux : {len(real_times)}")
 
-    
 
     resampled_times, resampled_coord = resample(real_times, total_duration, x_coords, y_coords)
+
     # Calcul de la vitesse avant le resample
     x_coords_np = np.array([pt[0] for pt in resampled_coord])
     y_coords_np = np.array([pt[1] for pt in resampled_coord])
@@ -176,9 +176,6 @@ def parse_spat_data(print_times=False):
     # dy = np.insert(dy, 0, 0.0)                                                      
 
     resampled_speed = list(zip(dx, dy))
-
-    print(f"Nombre de points spatiaux (resamplé) : {len(dx)}")
-    print(f"Nombre de points spatiaux (resamplé) : {len(dy)}")
 
     if not print_times:
         resampled_times = None
@@ -200,12 +197,8 @@ def parse_spat_data(print_times=False):
             window_sec: the size of the window in seconds used for RMS calculation
    """
 def compute_rms(data_instr, rate, window_sec=TIME_SAMPLE, alpha=0.2):
-    print(f"Durée audio: {len(data_instr)/rate:.2f} s")
     window_size = int(rate * window_sec)
-    print(f"Fréquence d'échantillonnage : {rate} Hz")
-    print(f"Calcul de la RMS avec une taille de fenêtre de {window_size} échantillons ({window_sec} secondes)")
     num_windows = int(len(data_instr) / window_size)
-    print(f"Nombre de fenêtres calculées : {num_windows}")
     rms_values = []
     times = []
     for i in range(num_windows):
@@ -245,16 +238,14 @@ def parse_audio_rms(detect_played_periods = False):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         rate, data = wavfile.read(fname)
-    print(instrument_idx, "oUI")
-    channel_idx = instrument_idx + 1  # L'audio comporte le chan "clic"
+    channel_idx = instrument_idx + 1  # Audio has a "clic" channel at index 0
     data_instr = data[:, channel_idx]
 
 
 
     times, rms_values = compute_rms(data_instr, rate)
-    print(len(rms_values), "valeurs RMS calculées")
-    
-    
+    print("Nombres de valeurs RMS calculées : ", len(rms_values))
+
 
     # On souhaite remplir le tableau de valeur booleenne (instrument joué ou non joué)
     if(detect_played_periods):
@@ -262,10 +253,9 @@ def parse_audio_rms(detect_played_periods = False):
 
         joue_periods_filtrees, _, _ = detect_periods(rms_values_norm, TIME_SAMPLE)
 
-        # Le format et le suivant : (14.3, 77.98), (81.22, 192.46), (199.38, 222.0)
-        # Ecrire les temps dans un tableau et associé au premier du couple la valeur True, et au deuxième la valeur False
+        # The format is the following : (14.3, 77.98), (81.22, 192.46), (199.38, 222.0)
+        # Write the times in an array and associate the first of the couple with the value True, and the second with the value False
 
-        print("OUIIIII", joue_periods_filtrees,)
 
         played_times = []
         played_values = []
@@ -285,7 +275,6 @@ def parse_audio_rms(detect_played_periods = False):
         time = resampled_times
         rms_values = resampled_played_values
 
-    # On souhaite remplir le tableau de valeur RMS pure
     else:
         rms_values = rms_values
     return times, rms_values
@@ -401,9 +390,8 @@ def create_csv_all_values(all_tracks=True):
         regions_data = parse_regions()
         beats, measures = parse_bpm_and_calculate_positions()
 
-        if(len(times) == len(audio_data)  == len(spat_coord) == len(spat_speed) == len(regions_data) == len(measures)) == len(beats): print("Même longueur de fichier")
-        else: print(len(spat_speed), len(spat_coord))
-        # We want to put all this into a single CSV. For each row, we take the info from the 3 lists and put them side by side in the CSV (separated by a comma)
+        if(len(times) == len(audio_data)  == len(spat_coord) == len(spat_speed) 
+           == len(regions_data) == len(measures)) == len(beats): print("Même longueur de fichier")
 
 
         if len(audio_data) == len(spat_coord) == len(regions_data):

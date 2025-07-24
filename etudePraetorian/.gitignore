@@ -1,7 +1,7 @@
 etudePraetorian/Audio
 etudePraetorian/Backups
 etudePraetorian/Media
-etudePraetorian/Results/*
 etudePraetorian/*.rpp
 etudePraetorian/newSeq/
 etudePraetorian/newSeq/**
+etudePraetorian/Data_Visualization/Results
