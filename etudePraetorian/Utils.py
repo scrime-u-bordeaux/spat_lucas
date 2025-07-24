@@ -45,7 +45,6 @@ def timecode_to_seconds(tc):
 def get_regions_from_name(track_name_file):
     base_dir = os.path.dirname(__file__)  # le dossier contenant ce fichier
     csv_audio_path = os.path.join(base_dir, "Audio", f"{track_name_file}.csv")
-    print(f"Chemin du fichier CSV audio : {csv_audio_path}")
     regions = []
     if os.path.exists(csv_audio_path):
         df_audio_csv = pd.read_csv(csv_audio_path)

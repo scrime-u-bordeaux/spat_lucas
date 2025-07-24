@@ -3,10 +3,20 @@ import sys
 import re
 import numpy as np
 import matplotlib.pyplot as plt
-from getData import process_track
+from Data_Visualization.getData import process_track
 import argparse
 
-
+"""
+Extract coordinates from the result data.
+Parameters:
+    result_data: The data containing coordinates.
+    total_duration: The total duration of the track.
+Returns:
+    times_norm: Normalized times.
+    x_coords: List of x coordinates.
+    y_coords: List of y coordinates.
+    real_times: List of real times corresponding to the coordinates.
+    """
 def extract_coords(result_data, total_duration):
     times_norm = [coord[0] for coord in result_data]
     x_coords = [coord[1] for coord in result_data]
@@ -14,14 +24,36 @@ def extract_coords(result_data, total_duration):
     real_times = [t * total_duration for t in times_norm]
     return times_norm, x_coords, y_coords, real_times
 
-
+"""
+Extract region names, timecodes, and colors from the regions.
+Parameters:
+    regions: List of region dictionaries containing 'name' and 'start' keys.
+Returns:
+    region_names: List of region names.
+    region_timecodes: List of tuples containing start and end times for each region.
+    region_colors: List of colors for each region.
+"""
 def extract_regions(regions):
     region_names = [m["name"] for m in regions[:-1]]
     region_timecodes = [(regions[i]["start"], regions[i + 1]["start"]) for i in range(len(regions) - 1)]
     region_colors = ['red', 'orange', 'green', 'blue', 'purple', 'brown', 'pink', 'cyan', 'olive']
     return region_names, region_timecodes, region_colors
 
-
+"""
+Generate position figures for each region in the track.
+Parameters:
+    output_dir: The directory where the position figures will be saved.
+    instrument_name: The name of the instrument.
+    track_name: The name of the track.
+    x_coords: List of x coordinates.
+    y_coords: List of y coordinates.
+    real_times: List of real times corresponding to the coordinates.
+    region_names: Names of the regions for visualization.
+    region_timecodes: Timecodes for the regions.
+    region_colors: Colors for the regions.
+Returns:
+    positions_paths: List of paths to the saved position figures.
+    """
 def generate_positions_figures(output_dir, instrument_name, track_name, x_coords, y_coords, real_times, region_names, region_timecodes, region_colors):
     positions_dir = os.path.join(output_dir, "positions")
     os.makedirs(positions_dir, exist_ok=True)
@@ -47,13 +79,22 @@ def generate_positions_figures(output_dir, instrument_name, track_name, x_coords
         output_path = os.path.join(positions_dir, f"{instrument_name}_{track_name}_{safe_region_name}.png")
         if not os.path.exists(output_path):
             plt.savefig(output_path)
-            print(f"Figure enregistrée dans : {output_path}")
+            
         plt.close()
         positions_paths.append(output_path)
-
+    print(f"Saving regions spatial plot to : {output_path}")
     return positions_paths
 
-
+"""
+Generate a heatmap from the resampled data.
+Parameters:
+    resampled_data: The resampled data containing x and y coordinates.
+    track_name: The name of the track for labeling.
+    instrument_name: The name of the instrument for labeling.
+    output_dir: The directory where the heatmap will be saved.
+Returns:
+    The path to the saved heatmap image.
+"""
 def generate_heatmap(resampled_data, track_name, instrument_name, output_dir):
     if not resampled_data:
         print("Aucune donnée pour générer la heatmap.")
@@ -93,7 +134,23 @@ def generate_heatmap(resampled_data, track_name, instrument_name, output_dir):
     plt.close()
     return save_path
 
-
+"""
+Plot and print the speed of spatialization for a given instrument and track.
+Parameters:
+    output_dir: The directory where the speed plot will be saved.
+    instrument_name: The name of the instrument.
+    track_name: The name of the track.
+    x_coords: List of x coordinates.
+    y_coords: List of y coordinates.
+    real_times: List of real times corresponding to the coordinates.
+    region_names: Names of the regions for visualization.
+    region_timecodes: Timecodes for the regions.
+    region_colors: Colors for the regions.
+Returns:
+    output_path: The path where the speed plot is saved.
+    speed: The computed speed values.
+    mid_times: The midpoints of the time intervals for the speed plot.
+"""
 def generate_speed_plot(output_dir, instrument_name, track_name, x_coords, y_coords, real_times, region_names, region_timecodes, region_colors):
     x_coords_np = np.array(x_coords)
     y_coords_np = np.array(y_coords)
@@ -104,17 +161,17 @@ def generate_speed_plot(output_dir, instrument_name, track_name, x_coords, y_coo
     dt = np.diff(real_times_np)
     dt[dt == 0] = 1e-8
 
-    vitesse = np.sqrt(dx ** 2 + dy ** 2) / dt
-    temps_milieu = (real_times_np[:-1] + real_times_np[1:]) / 2
+    speed = np.sqrt(dx ** 2 + dy ** 2) / dt
+    mid_times = (real_times_np[:-1] + real_times_np[1:]) / 2
 
-    output_path = os.path.join(output_dir, f"vitesse_{instrument_name}_{track_name}.png")
-    print(f"Enregistrement de la vitesse spatiale dans : {output_path}")
+    output_path = os.path.join(output_dir, f"speed_{instrument_name}_{track_name}.png")
+    print(f"Saving spatial speed plot to: {output_path}")
 
     plt.figure(figsize=(12, 5))
-    plt.plot(temps_milieu, vitesse, color='blue', label='Vitesse instantanée')
-    plt.xlabel('Temps (s)')
-    plt.ylabel('Vitesse (u/s)')
-    plt.title(f"Vitesse de déplacement en fonction du temps\n{instrument_name} - \"{track_name}\"")
+    plt.plot(mid_times, speed, color='blue', label='Instantaneous speed')
+    plt.xlabel('Time (s)')
+    plt.ylabel('Speed (u/s)')
+    plt.title(f"Movement speed over time\n{instrument_name} - \"{track_name}\"")
     plt.grid(True)
 
     for i, (region_name, (start_time, end_time)) in enumerate(zip(region_names, region_timecodes)):
@@ -130,9 +187,19 @@ def generate_speed_plot(output_dir, instrument_name, track_name, x_coords, y_coo
     plt.tight_layout()
     plt.savefig(output_path)
     plt.close()
-    return output_path, vitesse, temps_milieu
+    return output_path, speed, mid_times
 
-
+"""
+Analyse the spatialization of a track.
+Parameters:
+    track_idx: The index of the track to analyze.
+    instrument_idx: The index of the instrument to analyze (optional, if None, all instruments are analyzed).
+    compute_positions: Whether to compute and save position figures.
+    compute_speed: Whether to compute and save speed plots.
+    compute_heatmap: Whether to compute and save heatmaps.
+Returns:
+    A dictionary containing the results of the analysis, including paths to saved figures and data.
+"""
 def analyse_spat(track_idx, instrument_idx=None, compute_positions=True, compute_speed=True, compute_heatmap=True):
     all_instruments = instrument_idx is None
     result = process_track(instrument_idx=instrument_idx, selected_num_track=track_idx, all_instruments=all_instruments)

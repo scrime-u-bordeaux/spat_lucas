@@ -9,7 +9,7 @@ import re
 import warnings
 import sys
 
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+
 from Utils import get_track_name
 from Utils import get_regions_from_name, indexInstrument
 from Data_Visualization.audioRMS import detect_periods
@@ -162,7 +162,6 @@ def parse_spat_data(print_times=False):
 
     resampled_times, resampled_coord = resample(real_times, total_duration, x_coords, y_coords)
 
-    # Calcul de la vitesse avant le resample
     x_coords_np = np.array([pt[0] for pt in resampled_coord])
     y_coords_np = np.array([pt[1] for pt in resampled_coord])
     real_times_np = np.array(real_times)

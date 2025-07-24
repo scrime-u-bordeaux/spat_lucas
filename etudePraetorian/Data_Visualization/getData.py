@@ -3,10 +3,12 @@ import itertools
 import pandas as pd
 import wave
 import contextlib
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from Utils import get_instrument_name, get_regions_from_name
 
-SEQ_DIR = os.path.join(os.path.dirname(__file__), 'seq')
-AUDIO_DIR = os.path.join(os.path.dirname(__file__), 'Audio')
+SEQ_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'seq')
+AUDIO_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'Audio')
 RESAMPLE_OUTPUT_DIR = os.path.join(os.path.dirname(__file__), 'newSeq')
 
 def resample_figures(figures, total_duration):
@@ -152,6 +154,7 @@ def process_track(
             key=lambda x: (x[0] if x[0] is not None else float('inf'))
         )
 
+        
         if selected_num_track is None:
             raise ValueError("selected_num_track doit être spécifié")
         selected_track_index = int(selected_num_track) - 1
@@ -159,7 +162,6 @@ def process_track(
             raise IndexError("Numéro de piste sélectionné hors limites")
 
         track_index, track_name, figures = combined[selected_track_index]
-
         audio_path = os.path.join(audio_dir, f"{track_name}.wav")
         if not os.path.exists(audio_path):
             raise FileNotFoundError(f"Fichier audio {track_name}.wav introuvable")
